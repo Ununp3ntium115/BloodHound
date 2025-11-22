@@ -360,5 +360,13 @@ func NewV2API(resources v2.Resources, routerInst *router.Router) {
 		routerInst.POST("/api/v2/custom-nodes", resources.CreateCustomNodeKind).RequireAuth(),
 		routerInst.PUT(fmt.Sprintf("/api/v2/custom-nodes/{%s}", v2.CustomNodeKindParameter), resources.UpdateCustomNodeKind).RequireAuth(),
 		routerInst.DELETE(fmt.Sprintf("/api/v2/custom-nodes/{%s}", v2.CustomNodeKindParameter), resources.DeleteCustomNodeKind).RequireAuth(),
+
+		// PYRO Detector API - Fire Marshal integration
+		routerInst.GET("/api/v2/pyro-detector/detonators", resources.ListDetonators).RequireAuth(),
+		routerInst.POST(fmt.Sprintf("/api/v2/pyro-detector/detonators/{%s}/execute", v2.URIPathVariableDetonatorID), resources.ExecuteDetonator).RequireAuth(),
+		routerInst.POST("/api/v2/pyro-detector/cases", resources.CreateCase).RequireAuth(),
+		routerInst.GET("/api/v2/pyro-detector/agents", resources.ListAgents).RequireAuth(),
+		routerInst.POST("/api/v2/pyro-detector/pql", resources.ExecutePQL).RequireAuth(),
+		routerInst.GET("/api/v2/pyro-detector/health", resources.GetPyroDetectorHealth).RequireAuth(),
 	)
 }

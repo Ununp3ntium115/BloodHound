@@ -29,9 +29,10 @@ import '@react-sigma/core/lib/react-sigma.min.css';
 import { MultiDirectedGraph } from 'graphology';
 import { Attributes } from 'graphology-types';
 import { FC, useState, useCallback, useMemo, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SigmaChart from 'src/components/SigmaChart';
 import { useAppSelector } from 'src/store';
+import { pyroDetectorApi, Detonator, DetonatorExecutionResult } from 'src/api/pyroDetector';
 
 interface DetonatorResult {
     id: string;
@@ -69,45 +70,28 @@ const PyroDetectorView: FC = () => {
     
     const sigmaChartRef = useRef<any>(null);
 
-    // TODO: Replace with actual API call to PYRO Detector MCP server
-    // This would call the pyro_list_detonators and pyro_execute_detonator methods
+    const queryClient = useQueryClient();
+
+    // Fetch detonators from API
     const { data: detonators, isLoading: detonatorsLoading } = useQuery({
         queryKey: ['pyro-detectors'],
-        queryFn: async () => {
-            // Placeholder - would call PYRO Detector MCP server
-            // Example: await pyroDetectorClient.listDetonators()
-            return [
-                { id: '1', name: 'Network Topology Scan', description: 'Map network topology' },
-                { id: '2', name: 'Host Discovery', description: 'Discover active hosts' },
-                { id: '3', name: 'Service Enumeration', description: 'Enumerate services' },
-            ];
-        },
+        queryFn: () => pyroDetectorApi.listDetonators(),
     });
 
-    // TODO: Replace with actual API call to get detonator results
-    const { data: detonatorResults, isLoading: resultsLoading } = useQuery({
-        queryKey: ['pyro-detector-results', selectedDetonator],
-        queryFn: async () => {
-            if (!selectedDetonator) return null;
-            // Placeholder - would call PYRO Detector MCP server
-            // Example: await pyroDetectorClient.executeDetonator(selectedDetonator)
-            return {
-                id: selectedDetonator,
-                name: 'Network Topology Scan',
-                status: 'completed' as const,
-                timestamp: new Date().toISOString(),
-                nodes: [
-                    { id: 'node1', label: 'Host 1', type: 'host' },
-                    { id: 'node2', label: 'Host 2', type: 'host' },
-                    { id: 'node3', label: 'Network Segment', type: 'network' },
-                ],
-                edges: [
-                    { id: 'edge1', source: 'node1', target: 'node3', type: 'connected' },
-                    { id: 'edge2', source: 'node2', target: 'node3', type: 'connected' },
-                ],
-            };
+    const [detonatorResults, setDetonatorResults] = useState<DetonatorExecutionResult | null>(null);
+    const [resultsLoading, setResultsLoading] = useState(false);
+
+    // Execute detonator mutation
+    const executeDetonatorMutation = useMutation({
+        mutationFn: (detonatorId: string) => 
+            pyroDetectorApi.executeDetonator({ detonator_id: detonatorId }),
+        onSuccess: (data) => {
+            setDetonatorResults(data);
+            setResultsLoading(false);
         },
-        enabled: !!selectedDetonator,
+        onError: () => {
+            setResultsLoading(false);
+        },
     });
 
     // Build graph from detonator results
@@ -161,7 +145,9 @@ const PyroDetectorView: FC = () => {
 
     const handleExecuteDetonator = useCallback((detonatorId: string) => {
         setSelectedDetonator(detonatorId);
-    }, []);
+        setResultsLoading(true);
+        executeDetonatorMutation.mutate(detonatorId);
+    }, [executeDetonatorMutation]);
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
@@ -186,7 +172,7 @@ const PyroDetectorView: FC = () => {
                             </Box>
                         ) : (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {detonators?.map((detonator: any) => (
+                                {detonators?.map((detonator: Detonator) => (
                                     <Card 
                                         key={detonator.id}
                                         sx={{ 
@@ -228,9 +214,13 @@ const PyroDetectorView: FC = () => {
                                 <Button 
                                     variant="outlined" 
                                     fullWidth
-                                    onClick={() => {
-                                        // TODO: Create new case via PYRO Detector
-                                        console.log('Create new case');
+                                    onClick={async () => {
+                                        try {
+                                            const newCase = await pyroDetectorApi.createCase('New Investigation');
+                                            console.log('Case created:', newCase);
+                                        } catch (error) {
+                                            console.error('Failed to create case:', error);
+                                        }
                                     }}
                                 >
                                     Create Case
@@ -238,9 +228,13 @@ const PyroDetectorView: FC = () => {
                                 <Button 
                                     variant="outlined" 
                                     fullWidth
-                                    onClick={() => {
-                                        // TODO: List agents via PYRO Detector
-                                        console.log('List agents');
+                                    onClick={async () => {
+                                        try {
+                                            const agents = await pyroDetectorApi.listAgents();
+                                            console.log('Agents:', agents);
+                                        } catch (error) {
+                                            console.error('Failed to list agents:', error);
+                                        }
                                     }}
                                 >
                                     List Agents
@@ -248,9 +242,13 @@ const PyroDetectorView: FC = () => {
                                 <Button 
                                     variant="outlined" 
                                     fullWidth
-                                    onClick={() => {
-                                        // TODO: Execute PQL query via PYRO Detector
-                                        console.log('Execute PQL');
+                                    onClick={async () => {
+                                        try {
+                                            const result = await pyroDetectorApi.executePQL('SELECT * FROM agents');
+                                            console.log('PQL result:', result);
+                                        } catch (error) {
+                                            console.error('Failed to execute PQL:', error);
+                                        }
                                     }}
                                 >
                                     Execute PQL Query

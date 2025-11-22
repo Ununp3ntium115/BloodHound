@@ -155,6 +155,7 @@ type Configuration struct {
 	CollectorsBucketURL             serde.URL                 `json:"collectors_bucket_url"`
 	CollectorsBasePath              string                    `json:"collectors_base_path"`
 	DatapipeInterval                int                       `json:"datapipe_interval"`
+	PyroDetectorPath                string                    `json:"pyro_detector_path"`
 	EnableStartupWaitPeriod         bool                      `json:"enable_startup_wait_period"`
 	EnableAPILogging                bool                      `json:"enable_api_logging"`
 	EnableCypherMutations           bool                      `json:"enable_cypher_mutations"`
