@@ -1,0 +1,21 @@
+[package]
+name = "node-red-bridge"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+reqwest.workspace = true
+# mqtt = "0.1"  # Commented out - use reqwest for HTTP instead
+uuid = { version = "1.11", features = ["v4"] }
+
+[lib]
+name = "node_red_bridge"
+path = "src/lib.rs"
+

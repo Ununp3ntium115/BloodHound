@@ -1,0 +1,42 @@
+[package]
+name = "pyro-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+redb.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+axum.workspace = true
+tower.workspace = true
+axum-extra = { version = "0.9", features = ["cookie"] }
+jsonwebtoken = "9.3"
+
+# Additional dependencies
+toml = "0.8"
+uuid = { version = "1.11", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+argon2.workspace = true
+rand.workspace = true
+
+# Local workspace dependencies
+cryptex = { path = "../cryptex" }
+node-red-bridge = { path = "../node-red-bridge" }
+
+[dev-dependencies]
+tempfile = "3.10"
+
+[[bin]]
+name = "pyro"
+path = "src/main.rs"
+
+[lib]
+name = "pyro_core"
+path = "src/lib.rs"
+

@@ -1,0 +1,29 @@
+[package]
+name = "pyro-detector"
+version = "0.1.0"
+edition = "2021"
+authors = ["PYRO Detector Team"]
+license = "Apache-2.0"
+description = "MCP Server for PYRO Platform Ignition Integration - Detonator Service"
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+reqwest.workspace = true
+url = "2.5"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# MCP Protocol - using stdio JSON-RPC 2.0 (no external MCP crate needed)
+
+[lib]
+name = "pyro_detector"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pyro-detector"
+path = "src/main.rs"
+

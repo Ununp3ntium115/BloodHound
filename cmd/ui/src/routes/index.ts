@@ -30,6 +30,7 @@ const Administration = React.lazy(() => import('src/views/Administration'));
 const ApiExplorer = React.lazy(() => import('bh-shared-ui').then((module) => ({ default: module.ApiExplorer })));
 const GroupManagement = React.lazy(() => import('src/views/GroupManagement/GroupManagement'));
 const PrivilegeZones = React.lazy(() => import('src/views/PrivilegeZones'));
+const PyroDetector = React.lazy(() => import('src/views/PyroDetector'));
 
 export const ROUTES: Routable[] = [
     {
@@ -97,6 +98,12 @@ export const ROUTES: Routable[] = [
         exact: true,
         path: routes.ROUTE_API_EXPLORER,
         component: ApiExplorer,
+        authenticationRequired: true,
+        navigation: true,
+    },
+    {
+        path: routes.ROUTE_PYRO_DETECTOR,
+        component: PyroDetector,
         authenticationRequired: true,
         navigation: true,
     },

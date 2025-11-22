@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "cryptex-translator": {
+      "command": "cargo",
+      "args": [
+        "run",
+        "--release",
+        "--bin",
+        "mcp-translator"
+      ],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}
+

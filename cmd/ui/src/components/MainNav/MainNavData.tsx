@@ -74,6 +74,12 @@ export const useMainNavPrimaryListData = (): MainNavData['primaryList'] => {
             route: tierFlag?.enabled ? ROUTE_PRIVILEGE_ZONES : routes.ROUTE_GROUP_MANAGEMENT,
             testId: tierFlag?.enabled ? 'global_nav-privilege-zones' : 'global_nav-group-management',
         },
+        {
+            label: 'PYRO Detector',
+            icon: <AppIcon.Network size={24} />,
+            route: routes.ROUTE_PYRO_DETECTOR,
+            testId: 'global_nav-pyro-detector',
+        },
     ];
 
     if (hasPermissionToUpload) {

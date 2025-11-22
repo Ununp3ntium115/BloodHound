@@ -1,0 +1,11 @@
+{
+  "pyro_api_url": "http://localhost:3001",
+  "api_token": "your-jwt-token-here",
+  "username": "fire.marshal",
+  "password": "secure_password",
+  "timeout_seconds": 30,
+  "rate_limit_per_minute": 100,
+  "cdif_compliance": true,
+  "fire_marshal_terminology": true
+}
+

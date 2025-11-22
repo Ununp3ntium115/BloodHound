@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "pyro-detector": {
+      "command": "pyro-detector",
+      "args": [],
+      "env": {
+        "PYRO_API_URL": "http://localhost:3001",
+        "PYRO_CDIF_COMPLIANCE": "true",
+        "PYRO_FIRE_MARSHAL_TERMINOLOGY": "true"
+      }
+    }
+  }
+}
+

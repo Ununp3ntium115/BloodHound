@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "cryptex-translator": {
+      "command": "cargo",
+      "args": [
+        "run",
+        "--bin",
+        "mcp-translator",
+        "--manifest-path",
+        "Cargo.toml"
+      ],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}
+

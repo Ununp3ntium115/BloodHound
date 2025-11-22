@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WiX Toolset installer for Pyro (MSI) -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" 
+           Name="BloodSniffer - Autonomous Data Liberation System" 
+           Language="1033" 
+           Version="0.1.0" 
+           Manufacturer="Anarchist Collective" 
+           UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+    
+    <Package InstallerVersion="200" 
+             Compressed="yes" 
+             InstallScope="perMachine" 
+             Description="BloodSniffer - Autonomous Data Liberation System"
+             Comments="No gods, no masters, only autonomous systems" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Pyro is already installed." />
+    
+    <MediaTemplate />
+
+    <Feature Id="ProductFeature" Title="Pyro" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+  </Product>
+
+  <Fragment>
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="BloodSniffer">
+          <Directory Id="BinFolder" Name="bin" />
+        </Directory>
+      </Directory>
+    </Directory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="BinFolder">
+      <Component Id="PyroExe" Guid="B1C2D3E4-F5A6-7890-BCDE-F12345678901">
+        <File Id="BloodSnifferExe" Source="..\target\release\bloodsniffer.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="FireMarshalExe" Guid="C2D3E4F5-A6B7-8901-CDEF-123456789012">
+        <File Id="FireMarshalExe" Source="..\target\release\fire-marshal.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="Readme" Guid="D3E4F5A6-B7C8-9012-DEF1-234567890123">
+        <File Id="Readme" Source="..\README.md" KeyPath="yes" />
+      </Component>
+      <Component Id="License" Guid="E4F5A6B7-C8D9-0123-EF12-345678901234">
+        <File Id="License" Source="..\LICENSE" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

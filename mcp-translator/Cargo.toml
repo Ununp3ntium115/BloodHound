@@ -1,0 +1,27 @@
+[package]
+name = "mcp-translator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+
+# MCP server uses stdio JSON-RPC 2.0 (no external dependencies needed)
+
+# Code parsing (using regex for now, tree-sitter can be added later)
+regex = "1.11"
+
+# Local workspace dependencies
+cryptex = { path = "../cryptex" }
+pyro-core = { path = "../pyro-core" }
+
+[[bin]]
+name = "mcp-translator"
+path = "src/main.rs"
+

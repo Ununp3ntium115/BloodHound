@@ -1,0 +1,24 @@
+# Cursor Rules for Pyro Project
+
+## MCP Server Configuration
+
+The MCP Translator Server is available for translating source code to Cryptex structure.
+
+To use it in Cursor:
+1. Add to your Cursor MCP settings (Settings > Features > MCP)
+2. Or use the configuration in `mcp-translator/mcp-config.json`
+
+## Project Structure
+
+- `pyro-core/` - Main Pyro application
+- `cryptex/` - Hierarchical file structure system
+- `fire-marshal/` - Data flow orchestration
+- `node-red-bridge/` - Node-RED integration
+- `mcp-translator/` - MCP server for code translation
+
+## Anarchist Branding
+
+- Use Pyro/Fire Marshal themed naming
+- Apply anarchist principles to code organization
+- Maintain autonomous, decentralized architecture
+
