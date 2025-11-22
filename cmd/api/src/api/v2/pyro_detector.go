@@ -17,6 +17,7 @@
 package v2
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/specterops/bloodhound/cmd/api/src/api"
@@ -57,7 +59,16 @@ func NewPyroDetectorClient(cfg config.Configuration) *PyroDetectorClient {
 }
 
 // callMCPMethod calls a method on the PYRO Detector MCP server via stdio
-func (c *PyroDetectorClient) callMCPMethod(method string, params map[string]interface{}) (map[string]interface{}, error) {
+func (c *PyroDetectorClient) callMCPMethod(ctx context.Context, method string, params map[string]interface{}) (map[string]interface{}, error) {
+	startTime := time.Now()
+	
+	// Log request
+	slog.InfoContext(ctx, "PYRO Detector MCP request",
+		"method", method,
+		"params", params,
+		"server_path", c.serverPath,
+	)
+
 	// Build JSON-RPC 2.0 request
 	request := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -68,19 +79,32 @@ func (c *PyroDetectorClient) callMCPMethod(method string, params map[string]inte
 
 	requestJSON, err := json.Marshal(request)
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to marshal MCP request",
+			"method", method,
+			"error", err,
+		)
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	// Execute the MCP server binary
-	cmd := exec.Command(c.serverPath)
+	cmd := exec.CommandContext(ctx, c.serverPath)
 	cmd.Stdin = strings.NewReader(string(requestJSON) + "\n")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to create stdout pipe for MCP server",
+			"method", method,
+			"error", err,
+		)
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
+		slog.ErrorContext(ctx, "Failed to start MCP server",
+			"method", method,
+			"server_path", c.serverPath,
+			"error", err,
+		)
 		return nil, fmt.Errorf("failed to start MCP server: %w", err)
 	}
 	defer cmd.Process.Kill()
@@ -88,47 +112,99 @@ func (c *PyroDetectorClient) callMCPMethod(method string, params map[string]inte
 	// Read response
 	responseBytes, err := io.ReadAll(stdout)
 	if err != nil {
+		slog.ErrorContext(ctx, "Failed to read MCP server response",
+			"method", method,
+			"error", err,
+		)
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if err := cmd.Wait(); err != nil {
+		slog.ErrorContext(ctx, "MCP server exited with error",
+			"method", method,
+			"error", err,
+		)
 		return nil, fmt.Errorf("MCP server exited with error: %w", err)
 	}
 
 	// Parse JSON-RPC 2.0 response
 	var response map[string]interface{}
 	if err := json.Unmarshal(responseBytes, &response); err != nil {
+		slog.ErrorContext(ctx, "Failed to parse MCP server response",
+			"method", method,
+			"response_bytes", len(responseBytes),
+			"error", err,
+		)
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	duration := time.Since(startTime)
+
 	// Check for errors
 	if errVal, ok := response["error"]; ok {
+		slog.ErrorContext(ctx, "MCP server returned error",
+			"method", method,
+			"error", errVal,
+			"duration_ms", duration.Milliseconds(),
+		)
 		return nil, fmt.Errorf("MCP server error: %v", errVal)
 	}
 
 	// Return result
-	if result, ok := response["result"]; ok {
-		if resultMap, ok := result.(map[string]interface{}); ok {
-			return resultMap, nil
+	var result map[string]interface{}
+	if resultVal, ok := response["result"]; ok {
+		if resultMap, ok := resultVal.(map[string]interface{}); ok {
+			result = resultMap
+		} else {
+			result = map[string]interface{}{"result": resultVal}
 		}
-		return map[string]interface{}{"result": result}, nil
+	} else {
+		slog.WarnContext(ctx, "MCP server response missing result",
+			"method", method,
+			"response", response,
+		)
+		return nil, fmt.Errorf("no result in response")
 	}
 
-	return nil, fmt.Errorf("no result in response")
+	// Log successful response
+	slog.InfoContext(ctx, "PYRO Detector MCP response",
+		"method", method,
+		"duration_ms", duration.Milliseconds(),
+		"success", true,
+	)
+
+	return result, nil
 }
 
 // ListDetonators lists available Fire Marshal detonators
 func (s *Resources) ListDetonators(response http.ResponseWriter, request *http.Request) {
+	startTime := time.Now()
+	ctx := request.Context()
+	
+	slog.InfoContext(ctx, "PYRO Detector API: ListDetonators",
+		"method", "GET",
+		"path", request.URL.Path,
+		"remote_addr", request.RemoteAddr,
+	)
+
 	client := NewPyroDetectorClient(s.Config)
 
-	result, err := client.callMCPMethod("pyro_list_detonators", map[string]interface{}{})
+	result, err := client.callMCPMethod(ctx, "pyro_list_detonators", map[string]interface{}{})
 	if err != nil {
-		slog.ErrorContext(request.Context(), "Failed to list detonators", "error", err)
-		api.WriteErrorResponse(request.Context(), api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to list detonators: %v", err), request), response)
+		slog.ErrorContext(ctx, "Failed to list detonators",
+			"error", err,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+		)
+		api.WriteErrorResponse(ctx, api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to list detonators: %v", err), request), response)
 		return
 	}
 
-	api.WriteBasicResponse(request.Context(), result, http.StatusOK, response)
+	slog.InfoContext(ctx, "PYRO Detector API: ListDetonators success",
+		"duration_ms", time.Since(startTime).Milliseconds(),
+		"status", http.StatusOK,
+	)
+
+	api.WriteBasicResponse(ctx, result, http.StatusOK, response)
 }
 
 // ExecuteDetonator executes a Fire Marshal detonator
@@ -156,15 +232,35 @@ func (s *Resources) ExecuteDetonator(response http.ResponseWriter, request *http
 	}
 	params["detonator_id"] = detonatorID
 
+	startTime := time.Now()
+	ctx := request.Context()
+	
+	slog.InfoContext(ctx, "PYRO Detector API: ExecuteDetonator",
+		"method", "POST",
+		"path", request.URL.Path,
+		"detonator_id", detonatorID,
+		"remote_addr", request.RemoteAddr,
+	)
+
 	client := NewPyroDetectorClient(s.Config)
-	result, err := client.callMCPMethod("pyro_execute_detonator", params)
+	result, err := client.callMCPMethod(ctx, "pyro_execute_detonator", params)
 	if err != nil {
-		slog.ErrorContext(request.Context(), "Failed to execute detonator", "error", err, "detonator_id", detonatorID)
-		api.WriteErrorResponse(request.Context(), api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to execute detonator: %v", err), request), response)
+		slog.ErrorContext(ctx, "Failed to execute detonator",
+			"error", err,
+			"detonator_id", detonatorID,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+		)
+		api.WriteErrorResponse(ctx, api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to execute detonator: %v", err), request), response)
 		return
 	}
 
-	api.WriteBasicResponse(request.Context(), result, http.StatusOK, response)
+	slog.InfoContext(ctx, "PYRO Detector API: ExecuteDetonator success",
+		"detonator_id", detonatorID,
+		"duration_ms", time.Since(startTime).Milliseconds(),
+		"status", http.StatusOK,
+	)
+
+	api.WriteBasicResponse(ctx, result, http.StatusOK, response)
 }
 
 // CreateCase creates a new investigation case
@@ -175,29 +271,63 @@ func (s *Resources) CreateCase(response http.ResponseWriter, request *http.Reque
 		return
 	}
 
+	startTime := time.Now()
+	ctx := request.Context()
+	
+	slog.InfoContext(ctx, "PYRO Detector API: CreateCase",
+		"method", "POST",
+		"path", request.URL.Path,
+		"remote_addr", request.RemoteAddr,
+	)
+
 	client := NewPyroDetectorClient(s.Config)
-	result, err := client.callMCPMethod("pyro_create_case", params)
+	result, err := client.callMCPMethod(ctx, "pyro_create_case", params)
 	if err != nil {
-		slog.ErrorContext(request.Context(), "Failed to create case", "error", err)
-		api.WriteErrorResponse(request.Context(), api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to create case: %v", err), request), response)
+		slog.ErrorContext(ctx, "Failed to create case",
+			"error", err,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+		)
+		api.WriteErrorResponse(ctx, api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to create case: %v", err), request), response)
 		return
 	}
 
-	api.WriteBasicResponse(request.Context(), result, http.StatusCreated, response)
+	slog.InfoContext(ctx, "PYRO Detector API: CreateCase success",
+		"duration_ms", time.Since(startTime).Milliseconds(),
+		"status", http.StatusCreated,
+	)
+
+	api.WriteBasicResponse(ctx, result, http.StatusCreated, response)
 }
 
 // ListAgents lists all Fire Marshal agents
 func (s *Resources) ListAgents(response http.ResponseWriter, request *http.Request) {
+	startTime := time.Now()
+	ctx := request.Context()
+	
+	slog.InfoContext(ctx, "PYRO Detector API: ListAgents",
+		"method", "GET",
+		"path", request.URL.Path,
+		"remote_addr", request.RemoteAddr,
+	)
+
 	client := NewPyroDetectorClient(s.Config)
 
-	result, err := client.callMCPMethod("pyro_list_agents", map[string]interface{}{})
+	result, err := client.callMCPMethod(ctx, "pyro_list_agents", map[string]interface{}{})
 	if err != nil {
-		slog.ErrorContext(request.Context(), "Failed to list agents", "error", err)
-		api.WriteErrorResponse(request.Context(), api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to list agents: %v", err), request), response)
+		slog.ErrorContext(ctx, "Failed to list agents",
+			"error", err,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+		)
+		api.WriteErrorResponse(ctx, api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to list agents: %v", err), request), response)
 		return
 	}
 
-	api.WriteBasicResponse(request.Context(), result, http.StatusOK, response)
+	slog.InfoContext(ctx, "PYRO Detector API: ListAgents success",
+		"duration_ms", time.Since(startTime).Milliseconds(),
+		"status", http.StatusOK,
+	)
+
+	api.WriteBasicResponse(ctx, result, http.StatusOK, response)
 }
 
 // ExecutePQL executes a Pyro Query Language query
@@ -213,28 +343,62 @@ func (s *Resources) ExecutePQL(response http.ResponseWriter, request *http.Reque
 		return
 	}
 
+	startTime := time.Now()
+	ctx := request.Context()
+	
+	slog.InfoContext(ctx, "PYRO Detector API: ExecutePQL",
+		"method", "POST",
+		"path", request.URL.Path,
+		"remote_addr", request.RemoteAddr,
+	)
+
 	client := NewPyroDetectorClient(s.Config)
-	result, err := client.callMCPMethod("pyro_execute_pql", params)
+	result, err := client.callMCPMethod(ctx, "pyro_execute_pql", params)
 	if err != nil {
-		slog.ErrorContext(request.Context(), "Failed to execute PQL query", "error", err)
-		api.WriteErrorResponse(request.Context(), api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to execute PQL query: %v", err), request), response)
+		slog.ErrorContext(ctx, "Failed to execute PQL query",
+			"error", err,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+		)
+		api.WriteErrorResponse(ctx, api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to execute PQL query: %v", err), request), response)
 		return
 	}
 
-	api.WriteBasicResponse(request.Context(), result, http.StatusOK, response)
+	slog.InfoContext(ctx, "PYRO Detector API: ExecutePQL success",
+		"duration_ms", time.Since(startTime).Milliseconds(),
+		"status", http.StatusOK,
+	)
+
+	api.WriteBasicResponse(ctx, result, http.StatusOK, response)
 }
 
 // GetHealth checks the health of the PYRO Detector service
 func (s *Resources) GetPyroDetectorHealth(response http.ResponseWriter, request *http.Request) {
+	startTime := time.Now()
+	ctx := request.Context()
+	
+	slog.InfoContext(ctx, "PYRO Detector API: GetHealth",
+		"method", "GET",
+		"path", request.URL.Path,
+		"remote_addr", request.RemoteAddr,
+	)
+
 	client := NewPyroDetectorClient(s.Config)
 
-	result, err := client.callMCPMethod("pyro_health", map[string]interface{}{})
+	result, err := client.callMCPMethod(ctx, "pyro_health", map[string]interface{}{})
 	if err != nil {
-		slog.ErrorContext(request.Context(), "Failed to get health status", "error", err)
-		api.WriteErrorResponse(request.Context(), api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to get health status: %v", err), request), response)
+		slog.ErrorContext(ctx, "Failed to get health status",
+			"error", err,
+			"duration_ms", time.Since(startTime).Milliseconds(),
+		)
+		api.WriteErrorResponse(ctx, api.BuildErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to get health status: %v", err), request), response)
 		return
 	}
 
-	api.WriteBasicResponse(request.Context(), result, http.StatusOK, response)
+	slog.InfoContext(ctx, "PYRO Detector API: GetHealth success",
+		"duration_ms", time.Since(startTime).Milliseconds(),
+		"status", http.StatusOK,
+	)
+
+	api.WriteBasicResponse(ctx, result, http.StatusOK, response)
 }
 

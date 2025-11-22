@@ -58,6 +58,24 @@ interface NetworkEdge {
     properties?: Record<string, any>;
 }
 
+// UI Logging utility
+const uiLog = (component: string, action: string, data?: any) => {
+    const logEntry = {
+        timestamp: new Date().toISOString(),
+        component: 'PyroDetectorView',
+        subcomponent: component,
+        action,
+        data,
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+    };
+    console.log('[PYRO_DETECTOR_UI]', JSON.stringify(logEntry));
+    // Optional: Send to remote logging service
+    if (process.env.NODE_ENV === 'production' && (window as any).pyroLogger) {
+        (window as any).pyroLogger.log(logEntry);
+    }
+};
+
 const PyroDetectorView: FC = () => {
     const theme = useTheme();
     const darkMode = useAppSelector((state) => state.global.view.darkMode);
@@ -73,9 +91,28 @@ const PyroDetectorView: FC = () => {
     const queryClient = useQueryClient();
 
     // Fetch detonators from API
-    const { data: detonators, isLoading: detonatorsLoading } = useQuery({
+    const { data: detonators, isLoading: detonatorsLoading, error: detonatorsError } = useQuery({
         queryKey: ['pyro-detectors'],
-        queryFn: () => pyroDetectorApi.listDetonators(),
+        queryFn: async () => {
+            uiLog('API', 'listDetonators_start');
+            const startTime = performance.now();
+            try {
+                const result = await pyroDetectorApi.listDetonators();
+                const duration = performance.now() - startTime;
+                uiLog('API', 'listDetonators_success', { 
+                    count: result.length, 
+                    duration_ms: duration 
+                });
+                return result;
+            } catch (error) {
+                const duration = performance.now() - startTime;
+                uiLog('API', 'listDetonators_error', { 
+                    error: error instanceof Error ? error.message : String(error),
+                    duration_ms: duration 
+                });
+                throw error;
+            }
+        },
     });
 
     const [detonatorResults, setDetonatorResults] = useState<DetonatorExecutionResult | null>(null);
@@ -83,13 +120,42 @@ const PyroDetectorView: FC = () => {
 
     // Execute detonator mutation
     const executeDetonatorMutation = useMutation({
-        mutationFn: (detonatorId: string) => 
-            pyroDetectorApi.executeDetonator({ detonator_id: detonatorId }),
+        mutationFn: async (detonatorId: string) => {
+            uiLog('API', 'executeDetonator_start', { detonator_id: detonatorId });
+            const startTime = performance.now();
+            try {
+                const result = await pyroDetectorApi.executeDetonator({ detonator_id: detonatorId });
+                const duration = performance.now() - startTime;
+                uiLog('API', 'executeDetonator_success', { 
+                    detonator_id: detonatorId,
+                    status: result.status,
+                    duration_ms: duration 
+                });
+                return result;
+            } catch (error) {
+                const duration = performance.now() - startTime;
+                uiLog('API', 'executeDetonator_error', { 
+                    detonator_id: detonatorId,
+                    error: error instanceof Error ? error.message : String(error),
+                    duration_ms: duration 
+                });
+                throw error;
+            }
+        },
         onSuccess: (data) => {
+            uiLog('UI', 'detonator_execution_complete', { 
+                detonator_id: data.detonator_id,
+                status: data.status,
+                nodes_count: data.nodes?.length || 0,
+                edges_count: data.edges?.length || 0,
+            });
             setDetonatorResults(data);
             setResultsLoading(false);
         },
-        onError: () => {
+        onError: (error) => {
+            uiLog('UI', 'detonator_execution_failed', { 
+                error: error instanceof Error ? error.message : String(error) 
+            });
             setResultsLoading(false);
         },
     });

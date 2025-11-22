@@ -35,7 +35,10 @@ impl PyroDetectorServer {
                 _ => None,
             })
             .unwrap_or(LogLevel::Info);
-        let logger = Logger::new(log_level);
+        let log_dir = std::env::var("PYRO_LOG_DIR")
+            .unwrap_or_else(|_| "./logs".to_string());
+        let logger = Logger::new(log_level, &log_dir)
+            .map_err(|e| anyhow::anyhow!("Failed to create logger: {}", e))?;
 
         Ok(Self {
             api_client,
@@ -79,7 +82,10 @@ impl PyroDetectorServer {
         let params_owned = request.get("params").cloned().unwrap_or_else(|| json!({}));
         let params = &params_owned;
 
-        self.logger.debug(&format!("Handling MCP method: {}", method));
+        let request_id = request.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
+        let start_time = std::time::Instant::now();
+        
+        self.logger.log_mcp_request(method, params, request_id);
 
         let result = match method {
             // Investigation methods
@@ -97,13 +103,23 @@ impl PyroDetectorServer {
             "pyro_health" => self.handle_health(params).await?,
             "pyro_authenticate" => self.handle_authenticate(params).await?,
             
-            _ => json!({
-                "error": {
-                    "code": "METHOD_NOT_FOUND",
-                    "message": format!("Unknown method: {}", method)
-                }
-            }),
+            _ => {
+                self.logger.warn_with_fields("MCP", "Unknown method", json!({
+                    "method": method,
+                    "request_id": request_id,
+                }));
+                json!({
+                    "error": {
+                        "code": "METHOD_NOT_FOUND",
+                        "message": format!("Unknown method: {}", method)
+                    }
+                })
+            },
         };
+
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+        let has_error = result.get("error").is_some();
+        self.logger.log_mcp_response(method, request_id, !has_error, duration_ms);
 
         Ok(json!({
             "jsonrpc": "2.0",
