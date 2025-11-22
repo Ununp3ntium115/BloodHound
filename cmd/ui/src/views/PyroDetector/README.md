@@ -76,36 +76,39 @@ PyroDetector/
 - Detonator list UI
 - Investigation controls UI
 
-### 🔄 TODO
-- [ ] Connect to PYRO Detector MCP server API
-- [ ] Implement actual API calls (replace placeholders)
+### ✅ Completed
+- [x] Connect to PYRO Detector MCP server API ✅
+- [x] Implement actual API calls (replaced placeholders) ✅
+- [x] Add error handling ✅
+- [x] Add loading states ✅
+
+### 🔄 Future Enhancements
 - [ ] Add node/edge detail panels
 - [ ] Implement context menu actions
 - [ ] Add filtering and search
 - [ ] Add export functionality
 - [ ] Add real-time updates
-- [ ] Add error handling
-- [ ] Add loading states
 - [ ] Add unit tests
 
 ## API Integration
 
-### Current State
-The component currently uses placeholder data. To integrate with the actual PYRO Detector MCP server:
+### ✅ Current State - COMPLETE
+The component is fully integrated with the PYRO Detector MCP server:
 
-1. **Create API Client**: 
-   ```typescript
-   // src/api/pyroDetector.ts
-   export const pyroDetectorApi = {
-     listDetonators: () => fetch('/api/pyro-detector/list-detonators'),
-     executeDetonator: (id: string) => fetch(`/api/pyro-detector/execute/${id}`),
-     // ... other methods
-   };
-   ```
+1. **API Client**: ✅ Created at `src/api/pyroDetector.ts`
+   - Complete TypeScript API client
+   - All 6 endpoints implemented
+   - Type-safe interfaces
 
-2. **Update Queries**: Replace placeholder `useQuery` calls with actual API calls
+2. **Queries**: ✅ Using real API calls
+   - `useQuery` for data fetching
+   - `useMutation` for mutations
+   - React Query integration complete
 
-3. **Handle Responses**: Transform API responses into graph data structures
+3. **Responses**: ✅ Handling API responses
+   - Transforming responses to graph data
+   - Error handling implemented
+   - Loading states implemented
 
 ## Graph Data Structure
 
