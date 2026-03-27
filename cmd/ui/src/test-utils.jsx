@@ -19,7 +19,6 @@ import { createTheme } from '@mui/material/styles';
 import { configureStore } from '@reduxjs/toolkit';
 import { render, renderHook } from '@testing-library/react';
 import { NotificationsProvider, darkPalette } from 'bh-shared-ui';
-import { createMemoryHistory } from 'history';
 import { SnackbarProvider } from 'notistack';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Provider } from 'react-redux';
@@ -99,13 +98,13 @@ const customRenderHook = (
     {
         initialState = {},
         queryClient = createDefaultQueryClient(),
-        history = createMemoryHistory(),
+        route = '/',
         theme = defaultTheme,
         store = createDefaultStore(initialState),
         ...renderOptions
     } = {}
 ) => {
-    const AllTheProviders = ({ children }) => createProviders({ queryClient, history, theme, store, children });
+    const AllTheProviders = ({ children }) => createProviders({ queryClient, route, theme, store, children });
     return renderHook(hook, { wrapper: AllTheProviders, ...renderOptions });
 };
 
