@@ -36,7 +36,7 @@
         "immutable": "^5.0.0-beta.5",
         "js-client-library": "workspace:*",
         "json-2-csv": "^5.5.9",
-        "lodash": "^4.17.21",
+        "lodash": "^4.18.1",
         "luxon": "^3.3.0",
         "memoize-one": "^6.0.0",
         "notistack": "^2.0.5",
